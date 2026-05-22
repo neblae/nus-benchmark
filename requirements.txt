@@ -1,0 +1,14 @@
+# Core (required for the synthetic pipeline)
+numpy>=1.22
+
+# Recommended (faster peak picking; pure-numpy fallback exists without it)
+scipy>=1.8
+
+# Real Bruker/TopSpin data (optional until you have spectrometer data)
+# nmrglue>=0.10
+
+# Optional: lineshape fitting for overlapping peaks
+# lmfit>=1.2
+
+# Dev
+# pytest>=7.0

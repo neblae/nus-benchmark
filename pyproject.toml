@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nus-benchmark"
+version = "0.1.0"
+description = "Benchmark NUS schedules for 2D HSQC NMR to generate ML training data"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.22"]
+
+[project.optional-dependencies]
+full = ["scipy>=1.8", "nmrglue>=0.10", "lmfit>=1.2"]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+include = ["nus_benchmark*"]
