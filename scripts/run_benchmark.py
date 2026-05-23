@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 import os
+import shutil
 import sys
 
 import numpy as np
@@ -29,11 +30,30 @@ from nus_benchmark import (  # noqa: E402
     synth_hsqc_fid,
     apply_schedule,
     ZeroFillFFT,
+    NmrPipeIST,
     pick_reference_peaks,
     integrate_footprints,
     score_spectrum,
 )
 from nus_benchmark.synthetic import SynthConfig  # noqa: E402
+
+
+def _pick_reconstructor():
+    """Use NmrPipeIST if hmsIST + nmrglue are available, else fall back."""
+    try:
+        import nmrglue  # noqa: F401
+    except ImportError:
+        print("nmrglue not found (pip install nmrglue). Using ZeroFillFFT.")
+        return ZeroFillFFT(zerofill=1, apodize=True), "zerofill_fft"
+
+    if shutil.which("hmsIST") is None:
+        print("hmsIST not found on PATH. Using ZeroFillFFT.")
+        print("  Install NMRPipe: https://www.ibbr.umd.edu/nmrpipe/install.html")
+        print("  Install hmsIST:  http://comdnmr.uconn.edu/software")
+        return ZeroFillFFT(zerofill=1, apodize=True), "zerofill_fft"
+
+    print("hmsIST found — using NmrPipeIST reconstruction.")
+    return NmrPipeIST(), "nmrpipe_ist"
 
 
 def main() -> None:
@@ -49,7 +69,8 @@ def main() -> None:
     print(f"Synthetic FID: shape={fid.shape}, {len(true_peaks)} true peaks")
 
     # 2) Reconstruct the reference and pick peaks ONCE.
-    recon = ZeroFillFFT(zerofill=1, apodize=True)
+    recon, recon_name = _pick_reconstructor()
+    print(f"Reconstructor: {recon_name}")
     ref_spec = recon.reconstruct(fid)
     footprints = pick_reference_peaks(ref_spec, snr_threshold=8.0)
     print(f"Picked {len(footprints)} peaks on the reference spectrum")
@@ -78,6 +99,7 @@ def main() -> None:
 
                 row = {
                     "schedule": name,
+                    "reconstructor": recon_name,
                     "density": density,
                     "n_keep": n_keep,
                     "seed": seed,

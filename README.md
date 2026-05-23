@@ -12,7 +12,9 @@ reference. Each `(schedule, score)` pair is a labelled training example.
 > **Status:** runs end-to-end *today* on synthetic data with only `numpy`
 > (and optionally `scipy`). No spectrometer, NMRPipe, or TopSpin needed to
 > develop the pipeline. Real-data and real-reconstruction hooks are included
-> as clearly-marked plug-in points.
+> as clearly-marked plug-in points. The benchmark script automatically uses
+> `NmrPipeIST` when hmsIST is installed, and falls back to `ZeroFillFFT`
+> with a message when it is not.
 
 ## Why retrospective undersampling?
 
@@ -33,6 +35,39 @@ This generates a synthetic HSQC, benchmarks Poisson-gap / uniform-random /
 quantile-biased schedules at several sampling densities, and writes
 `data/results/benchmark_results.csv`. Expected: Poisson-gap scores highest,
 the naive quantile scheme lowest — matching the NUS literature.
+
+## Installing NMRPipe + hmsIST (for real reconstruction)
+
+The benchmark script automatically detects whether hmsIST is available and
+falls back to `ZeroFillFFT` if not. To enable real IST reconstruction:
+
+**1. NMRPipe** (free, from NIH/NIST — registration required):
+```bash
+# Fill out the form at https://www.ibbr.umd.edu/nmrpipe/install.html
+# They email you a download link. Then:
+chmod +x install.com
+./install.com
+```
+
+**2. hmsIST** (Hoch lab, UConn):
+```bash
+# Download from http://comdnmr.uconn.edu/software
+tar -xzf hmsist*.tar.gz
+cd hmsist*/
+make
+echo 'export PATH="/path/to/hmsist/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+hmsIST --help   # verify it works
+```
+
+**3. nmrglue** (Python, needed for reading/writing NMRPipe files):
+```bash
+pip install nmrglue
+```
+
+Once all three are installed, `python scripts/run_benchmark.py` will
+automatically switch to `NmrPipeIST`. NMRPipe registration can take a day
+or two — the pipeline works fully with `ZeroFillFFT` in the meantime.
 
 ## Using your own real fully-sampled HSQC
 
@@ -76,8 +111,9 @@ io_bruker.py    read real Bruker/TopSpin data when you have it (needs nmrglue)
 - **Normalize to a reference peak before scoring.** We measure *relative*
   quantification, not absolute scaling between reconstructions.
 - **Reconstruction is pluggable.** `ZeroFillFFT` needs nothing external and is
-  great for development. `NmrPipeIST` is a stub for scripted hmsIST — the
-  scalable path for generating large datasets headlessly.
+  great for development. `NmrPipeIST` shells out to hmsIST and is the
+  scalable path for generating large datasets headlessly. The benchmark
+  script auto-selects whichever is available.
 - **Weak peaks are tracked separately.** NUS error hits small peaks first, so
   the score reports a weak-peak term explicitly — usually the most
   informative signal for an ML model.
@@ -87,8 +123,9 @@ io_bruker.py    read real Bruker/TopSpin data when you have it (needs nmrglue)
 1. Acquire (or obtain) **one fully-sampled** HSQC in TopSpin.
 2. Read its raw FID with `io_bruker.read_fid()` (install `nmrglue`).
 3. Use that array everywhere the demo uses `synth_hsqc_fid()`.
-4. For realistic reconstruction, implement the `NmrPipeIST` backend
-   (NMRPipe + hmsIST), then loop over thousands of schedules unattended.
+4. Install NMRPipe + hmsIST (see above) — the benchmark script will
+   automatically use `NmrPipeIST` and loop over thousands of schedules
+   unattended.
 
 ## Tests
 
@@ -100,7 +137,6 @@ Tests run entirely on the synthetic path — no external dependencies.
 
 ## Roadmap / good next steps
 
-- Implement the `NmrPipeIST` reconstruction backend.
 - Add 2D lineshape fitting (`lmfit`) for overlapping peaks instead of box sums.
 - Export schedules in NMRPipe `.nus` format for real reconstruction.
 - Add a small ML baseline (e.g. predict `combined_score` from schedule
