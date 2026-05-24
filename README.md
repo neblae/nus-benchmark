@@ -9,12 +9,11 @@ undersample it with many different schedules, reconstruct each, integrate the
 peaks over **fixed footprints**, and score every reconstruction against the
 reference. Each `(schedule, score)` pair is a labelled training example.
 
-> **Status:** runs end-to-end *today* on synthetic data with only `numpy`
-> (and optionally `scipy`). No spectrometer, NMRPipe, or TopSpin needed to
-> develop the pipeline. Real-data and real-reconstruction hooks are included
-> as clearly-marked plug-in points. The benchmark script automatically uses
-> `NmrPipeIST` when hmsIST is installed, and falls back to `ZeroFillFFT`
-> with a message when it is not.
+> **Status:** runs end-to-end on synthetic data with only `numpy` — no
+> spectrometer needed. `nmrglue` is required for reading real Bruker data or
+> using `NmrPipeIST` reconstruction. When NMRPipe + hmsIST are installed, the
+> benchmark automatically switches to real IST reconstruction; otherwise it
+> falls back to `ZeroFillFFT`. See **Installing NMRPipe + hmsIST** below.
 
 ## Why retrospective undersampling?
 
