@@ -30,6 +30,7 @@ from nus_benchmark import (  # noqa: E402
     synth_hsqc_fid,
     apply_schedule,
     ZeroFillFFT,
+    PythonIST,
     NmrPipeIST,
     pick_reference_peaks,
     integrate_footprints,
@@ -39,21 +40,22 @@ from nus_benchmark.synthetic import SynthConfig  # noqa: E402
 
 
 def _pick_reconstructor():
-    """Use NmrPipeIST if hmsIST + nmrglue are available, else fall back."""
+    """Pick the best available reconstructor.
+
+    Priority:
+      1. NmrPipeIST  — if hmsIST binary + nmrglue are both available.
+      2. PythonIST   — pure numpy IST; always available, no extra installs.
+    """
     try:
         import nmrglue  # noqa: F401
+        if shutil.which("hmsIST") is not None:
+            print("hmsIST found — using NmrPipeIST reconstruction.")
+            return NmrPipeIST(), "nmrpipe_ist"
     except ImportError:
-        print("nmrglue not found (pip install nmrglue). Using ZeroFillFFT.")
-        return ZeroFillFFT(zerofill=1, apodize=True), "zerofill_fft"
+        pass
 
-    if shutil.which("hmsIST") is None:
-        print("hmsIST not found on PATH. Using ZeroFillFFT.")
-        print("  Install NMRPipe: https://www.ibbr.umd.edu/nmrpipe/install.html")
-        print("  Install hmsIST:  http://comdnmr.uconn.edu/software")
-        return ZeroFillFFT(zerofill=1, apodize=True), "zerofill_fft"
-
-    print("hmsIST found — using NmrPipeIST reconstruction.")
-    return NmrPipeIST(), "nmrpipe_ist"
+    print("Using PythonIST reconstruction (pure numpy, no external tools needed).")
+    return PythonIST(), "python_ist"
 
 
 def main() -> None:

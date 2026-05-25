@@ -11,9 +11,9 @@ reference. Each `(schedule, score)` pair is a labelled training example.
 
 > **Status:** runs end-to-end on synthetic data with only `numpy` — no
 > spectrometer needed. `nmrglue` is required for reading real Bruker data or
-> using `NmrPipeIST` reconstruction. When NMRPipe + hmsIST are installed, the
-> benchmark automatically switches to real IST reconstruction; otherwise it
-> falls back to `ZeroFillFFT`. See **Installing NMRPipe + hmsIST** below.
+> using `NmrPipeIST`. The benchmark auto-selects the best available
+> reconstructor: `NmrPipeIST` (if hmsIST is installed) → `PythonIST` (pure
+> numpy IST, always available). See **Reconstruction backends** below.
 
 ## Why retrospective undersampling?
 
@@ -35,38 +35,38 @@ quantile-biased schedules at several sampling densities, and writes
 `data/results/benchmark_results.csv`. Expected: Poisson-gap scores highest,
 the naive quantile scheme lowest — matching the NUS literature.
 
-## Installing NMRPipe + hmsIST (for real reconstruction)
+## Reconstruction backends
 
-The benchmark script automatically detects whether hmsIST is available and
-falls back to `ZeroFillFFT` if not. To enable real IST reconstruction:
+Three backends are available, in order of preference:
+
+| Backend | Requires | Quality |
+|---|---|---|
+| `NmrPipeIST` | NMRPipe + hmsIST + nmrglue | Best (production) |
+| `PythonIST` | numpy only | Good (no installs needed) |
+| `ZeroFillFFT` | numpy only | Baseline (shows raw artifacts) |
+
+The benchmark script picks the best available one automatically.
+
+### Installing NMRPipe (optional, for NmrPipeIST)
 
 **1. NMRPipe** (free, from NIH/NIST — registration required):
 ```bash
 # Fill out the form at https://www.ibbr.umd.edu/nmrpipe/install.html
-# They email you a download link. Then:
-chmod +x install.com
+# They email you a download link. Download install.com, binval.com, s.tZ
+# into the same folder, then:
+chmod +x install.com binval.com
 ./install.com
-```
-
-**2. hmsIST** (Hoch lab, UConn):
-```bash
-# Download from http://comdnmr.uconn.edu/software
-tar -xzf hmsist*.tar.gz
-cd hmsist*/
-make
-echo 'export PATH="/path/to/hmsist/bin:$PATH"' >> ~/.zshrc
+echo 'export PATH="/path/to/nmrbin.mac11_64:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-hmsIST --help   # verify it works
 ```
 
-**3. nmrglue** (Python, needed for reading/writing NMRPipe files):
+**2. hmsIST** — note: the Hoch lab download site (comdnmr.uconn.edu) is
+currently offline. Check for a mirror or contact your NMR facility.
+
+**3. nmrglue** (also needed for reading real Bruker data):
 ```bash
 pip install nmrglue
 ```
-
-Once all three are installed, `python scripts/run_benchmark.py` will
-automatically switch to `NmrPipeIST`. NMRPipe registration can take a day
-or two — the pipeline works fully with `ZeroFillFFT` in the meantime.
 
 ## Using your own real fully-sampled HSQC
 

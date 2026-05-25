@@ -26,7 +26,7 @@ Every public piece is importable from the top level:
 from .schedules import poisson_gap, uniform_random, quantile_biased
 from .synthetic import synth_hsqc_fid, SynthPeak
 from .undersample import apply_schedule
-from .reconstruct import Reconstructor, ZeroFillFFT, NmrPipeIST
+from .reconstruct import Reconstructor, ZeroFillFFT, PythonIST, NmrPipeIST
 from .peaks import pick_reference_peaks, integrate_footprints, Footprint
 from .scoring import score_spectrum, ScoreReport
 from .load_real_reference import load_real_reference, RealReference
@@ -42,6 +42,7 @@ __all__ = [
     "apply_schedule",
     "Reconstructor",
     "ZeroFillFFT",
+    "PythonIST",
     "NmrPipeIST",
     "pick_reference_peaks",
     "integrate_footprints",

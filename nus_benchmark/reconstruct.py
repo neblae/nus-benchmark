@@ -74,6 +74,67 @@ class ZeroFillFFT(Reconstructor):
         return spec.real
 
 
+class PythonIST(Reconstructor):
+    """Pure-numpy IST (Iterative Soft Thresholding) for NUS reconstruction.
+
+    No external software required. Implements the standard time-domain IST
+    loop used in NMR NUS reconstruction:
+
+        repeat niter times:
+            1. FFT masked FID -> spectrum
+            2. Soft-threshold the spectrum (shrink magnitudes, zero below t)
+            3. IFFT back to time domain
+            4. Restore the original sampled t1 rows (data consistency)
+            5. Decrease threshold t toward zero
+
+    The threshold starts at threshold_start * max(|initial spectrum|) and
+    decreases linearly to threshold_end * max over niter iterations.
+    After convergence, the reconstructed FID is apodized, zero-filled, and
+    FFT'd identically to ZeroFillFFT so scores are directly comparable.
+    """
+
+    def __init__(
+        self,
+        niter: int = 200,
+        threshold_start: float = 0.5,
+        threshold_end: float = 0.02,
+        zerofill: int = 1,
+        apodize: bool = True,
+    ):
+        self.niter = niter
+        self.threshold_start = threshold_start
+        self.threshold_end = threshold_end
+        self.zerofill = zerofill
+        self.apodize = apodize
+
+    def reconstruct(self, fid: np.ndarray) -> np.ndarray:
+        sampled = np.any(fid != 0, axis=1)
+        rec = fid.astype(np.complex128).copy()
+
+        # Set threshold scale from the initial spectrum of the masked FID.
+        spec0 = np.fft.fft2(rec)
+        scale = np.abs(spec0).max()
+        if scale == 0:
+            raise ValueError("FID is all zeros.")
+
+        t_start = self.threshold_start * scale
+        t_end = self.threshold_end * scale
+
+        for i in range(self.niter):
+            t = t_start + (t_end - t_start) * (i / max(self.niter - 1, 1))
+
+            spec = np.fft.fft2(rec)
+            rec = np.fft.ifft2(_soft_threshold(spec, t))
+
+            # Enforce data consistency: put original sampled points back.
+            rec[sampled] = fid[sampled]
+
+        if self.apodize:
+            rec = _apodize_2d(rec)
+        rec = _zerofill_2d(rec, self.zerofill)
+        return np.fft.fftshift(np.fft.fft2(rec)).real
+
+
 class NmrPipeIST(Reconstructor):
     """NMRPipe + hmsIST reconstruction backend for NUS data.
 
@@ -249,6 +310,11 @@ def _run_hmsist(
             f"stdout:\n{result.stdout}"
         )
 
+
+
+def _soft_threshold(spec: np.ndarray, t: float) -> np.ndarray:
+    mag = np.abs(spec)
+    return np.where(mag > t, spec * (1.0 - t / mag), 0.0)
 
 
 def _apodize_2d(data: np.ndarray) -> np.ndarray:
